@@ -67,7 +67,7 @@ func NewLegacyCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
 		authante.NewValidateSigCountDecorator(options.AccountKeeper),
 		authante.NewSigGasConsumeDecorator(options.AccountKeeper, options.SigGasConsumer),
 		// Note: signature verification uses EIP instead of the cosmos signature validator
-		NewLegacyEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler),
+		NewLegacyEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler, options.EvmChainID),
 		authante.NewIncrementSequenceDecorator(options.AccountKeeper),
 		ibcante.NewRedundantRelayDecorator(options.IBCKeeper),
 		NewGasWantedDecorator(options.EvmKeeper, options.FeeMarketKeeper),
@@ -83,21 +83,27 @@ func NewLegacyCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
 type LegacyEip712SigVerificationDecorator struct {
 	ak              evmtypes.AccountKeeper
 	signModeHandler authsigning.SignModeHandler
+	evmChainId      string
 }
 
 // Deprecated: NewLegacyEip712SigVerificationDecorator creates a new LegacyEip712SigVerificationDecorator
+// Allows an optional EVM Chain ID (e.g. 1 for Ethereum Mainnet). The upstream Evmos repo requires the Cosmos Chain ID
+// to be parseable by a regex but evmChainId removes that restriction by allowing an override.
 func NewLegacyEip712SigVerificationDecorator(
 	ak evmtypes.AccountKeeper,
 	signModeHandler authsigning.SignModeHandler,
+	evmChainId string,
 ) LegacyEip712SigVerificationDecorator {
 	return LegacyEip712SigVerificationDecorator{
 		ak:              ak,
 		signModeHandler: signModeHandler,
+		evmChainId:      evmChainId,
 	}
 }
 
 // AnteHandle handles validation of EIP712 signed cosmos txs.
 // it is not run on RecheckTx
+// Note that this decorator differs from the upstream repo by removing the chain ID format restriction
 func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 	tx sdk.Tx,
 	simulate bool,
@@ -173,6 +179,18 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 		accNum = acc.GetAccountNumber()
 	}
 
+	// There are two ChainIDs to verify, the Cosmos string and the EVM number. First try the EVM override value,
+	// then try to parse if no override provided
+	var evmChainID string = svd.evmChainId
+	if evmChainID == "" {
+		cId, err := ethermint.ParseChainID(chainID)
+
+		if err != nil {
+			return ctx, errorsmod.Wrapf(err, "failed to parse chainID: %s", chainID)
+		}
+		evmChainID = cId.String()
+	}
+
 	signerData := authsigning.SignerData{
 		ChainID:       chainID,
 		AccountNumber: accNum,
@@ -183,8 +201,8 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 		return next(ctx, tx, simulate)
 	}
 
-	if err := VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx); err != nil {
-		errMsg := fmt.Errorf("signature verification failed; please verify account number (%d) and chain-id (%s): %w", accNum, chainID, err)
+	if err := VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx, evmChainID); err != nil {
+		errMsg := fmt.Errorf("signature verification failed; please verify account number (%d) and chain-id (%s) and evm-chain-id (%s): %w", accNum, chainID, evmChainID, err)
 		return ctx, errorsmod.Wrap(errortypes.ErrUnauthorized, errMsg.Error())
 	}
 
@@ -193,12 +211,15 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 
 // VerifySignature verifies a transaction signature contained in SignatureData abstracting over different signing modes
 // and single vs multi-signatures.
+// Note that this decorator differs from the upstream repo by removing the chain ID format restriction, so signerData.ChainID is not parsed.
+// The evmChainID parameter is used instead of Cosmos ChainID parsing
 func VerifySignature(
 	pubKey cryptotypes.PubKey,
 	signerData authsigning.SignerData,
 	sigData signing.SignatureData,
 	_ authsigning.SignModeHandler,
 	tx authsigning.Tx,
+	evmChainID string,
 ) error {
 	switch data := sigData.(type) {
 	case *signing.SingleSignatureData:
@@ -231,11 +252,6 @@ func VerifySignature(
 			msgs, tx.GetMemo(), tx.GetTip(),
 		)
 
-		signerChainID, err := ethermint.ParseChainID(signerData.ChainID)
-		if err != nil {
-			return errorsmod.Wrapf(err, "failed to parse chain-id: %s", signerData.ChainID)
-		}
-
 		txWithExtensions, ok := tx.(authante.HasExtensionOptionsTx)
 		if !ok {
 			return errorsmod.Wrap(errortypes.ErrUnknownExtensionOptions, "tx doesnt contain any extensions")
@@ -250,8 +266,9 @@ func VerifySignature(
 			return errorsmod.Wrap(errortypes.ErrUnknownExtensionOptions, "unknown extension option")
 		}
 
-		if extOpt.TypedDataChainID != signerChainID.Uint64() {
-			return errorsmod.Wrap(errortypes.ErrInvalidChainID, "invalid chain-id")
+		typedDataChainID := fmt.Sprint(extOpt.TypedDataChainID)
+		if typedDataChainID != evmChainID {
+			return errorsmod.Wrapf(errortypes.ErrInvalidChainID, "eip-712 domain chainID: (%s) != (%s)", typedDataChainID, evmChainID)
 		}
 
 		if len(extOpt.FeePayer) == 0 {

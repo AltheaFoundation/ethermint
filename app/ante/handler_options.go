@@ -32,6 +32,8 @@ import (
 
 // HandlerOptions extend the SDK's AnteHandler options by requiring the IBC
 // channel keeper, EVM Keeper and Fee Market Keeper.
+// Note that this struct differs from the upstream repo by adding the optional EvmChainID override used in
+// EIP-712 signature verification instead of parsing the Cosmos Chain ID
 type HandlerOptions struct {
 	AccountKeeper          evmtypes.AccountKeeper
 	BankKeeper             evmtypes.BankKeeper
@@ -45,6 +47,7 @@ type HandlerOptions struct {
 	ExtensionOptionChecker ante.ExtensionOptionChecker
 	TxFeeChecker           ante.TxFeeChecker
 	DisabledAuthzMsgs      []string
+	EvmChainID             string
 }
 
 func (options HandlerOptions) validate() error {
@@ -55,7 +58,7 @@ func (options HandlerOptions) validate() error {
 		return errorsmod.Wrap(errortypes.ErrLogic, "bank keeper is required for AnteHandler")
 	}
 	if options.SignModeHandler == nil {
-		return errorsmod.Wrap(errortypes.ErrLogic, "sign mode handler is required for ante builder")
+		return errorsmod.Wrap(errortypes.ErrLogic, "sign mode handler is required for AnteHandler")
 	}
 	if options.FeeMarketKeeper == nil {
 		return errorsmod.Wrap(errortypes.ErrLogic, "fee market keeper is required for AnteHandler")

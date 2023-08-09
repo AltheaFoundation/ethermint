@@ -145,6 +145,7 @@ func (suite *AnteTestSuite) SetupTest() {
 			sdk.MsgTypeURL(&evmtypes.MsgEthereumTx{}),
 			sdk.MsgTypeURL(&vestingtypes.MsgCreateVestingAccount{}),
 		},
+		EvmChainID: "9000",
 	})
 	suite.Require().NoError(err)
 
