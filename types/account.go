@@ -19,7 +19,7 @@ import (
 	"bytes"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	_ types.AccountI                     = (*EthAccount)(nil)
+	_ sdk.AccountI                       = (*EthAccount)(nil)
 	_ EthAccountI                        = (*EthAccount)(nil)
 	_ authtypes.GenesisAccount           = (*EthAccount)(nil)
 	_ codectypes.UnpackInterfacesMessage = (*EthAccount)(nil)
@@ -44,7 +44,7 @@ const (
 
 // EthAccountI represents the interface of an EVM compatible account
 type EthAccountI interface {
-	types.AccountI
+	sdk.AccountI
 	// EthAddress returns the ethereum Address representation of the AccAddress
 	EthAddress() common.Address
 	// CodeHash is the keccak256 hash of the contract code (if any)
@@ -61,11 +61,19 @@ type EthAccountI interface {
 
 // ProtoAccount defines the prototype function for BaseAccount used for an
 // AccountKeeper.
-func ProtoAccount() types.AccountI {
+func ProtoAccount() sdk.AccountI {
 	return &EthAccount{
 		BaseAccount: &authtypes.BaseAccount{},
 		CodeHash:    common.BytesToHash(emptyCodeHash).String(),
 	}
+}
+
+// ProtoAccountWithAddress is a drop-in replacement for accountKeeper.NewAccountWithAddress(), but requires the caller to
+// call accountKeeper.NewAccount() after calling this function
+func ProtoAccountWithAddress(addr sdk.AccAddress) sdk.AccountI {
+	acc := ProtoAccount()
+	acc.SetAddress(addr)
+	return acc
 }
 
 // GetBaseAccount returns base account.

@@ -27,6 +27,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -80,6 +81,11 @@ type Keeper struct {
 	evmConstructor evm.Constructor
 	// Legacy subspace
 	ss paramstypes.Subspace
+
+	// Creates a basic account used in account initialization
+	// see x/auth/keeper/keeper.go for a similar example
+	// ethermint.ProtoAccountWithAddress is recommended here unless another account type is needed
+	AccountProtoFn func(sdk.AccAddress) sdk.AccountI
 }
 
 // NewKeeper generates new evm module keeper
@@ -96,6 +102,7 @@ func NewKeeper(
 	evmConstructor evm.Constructor,
 	tracer string,
 	ss paramstypes.Subspace,
+	accountProtoFn func(sdk.AccAddress) sdk.AccountI,
 ) *Keeper {
 	// ensure evm module account is set
 	if addr := ak.GetModuleAddress(types.ModuleName); addr == nil {
@@ -121,6 +128,7 @@ func NewKeeper(
 		evmConstructor:    evmConstructor,
 		tracer:            tracer,
 		ss:                ss,
+		AccountProtoFn:    accountProtoFn,
 	}
 }
 

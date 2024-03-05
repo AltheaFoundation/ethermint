@@ -34,6 +34,7 @@ import (
 // AccountKeeper defines the expected account keeper interface
 type AccountKeeper interface {
 	NewAccountWithAddress(ctx context.Context, addr sdk.AccAddress) sdk.AccountI
+	NewAccount(ctx context.Context, account sdk.AccountI) sdk.AccountI
 	GetModuleAddress(moduleName string) sdk.AccAddress
 	GetAllAccounts(ctx context.Context) (accounts []sdk.AccountI)
 	IterateAccounts(ctx context.Context, cb func(account sdk.AccountI) bool)
