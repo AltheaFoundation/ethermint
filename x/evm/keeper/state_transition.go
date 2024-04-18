@@ -239,9 +239,10 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, msgEth *types.MsgEthereumTx) 
 		}
 	}
 
-	// refund gas in order to match the Ethereum gas consumption instead of the default SDK one.
-	if err = k.RefundGas(ctx, msg, msg.Gas()-res.GasUsed, cfg.Params.EvmDenom); err != nil {
-		return nil, errorsmod.Wrapf(err, "failed to refund gas leftover gas to sender %s", msg.From())
+	// refund gas in order to match the Ethereum gas consumption instead of the default SDK one, then burn
+	// the collected amount
+	if err = k.RefundExcessGas(ctx, msg, msg.Gas()-res.GasUsed, cfg.Params.EvmDenom); err != nil {
+		return nil, errorsmod.Wrapf(err, "failed to refund excess gas to sender %s or burn ", msg.From())
 	}
 
 	if len(receipt.Logs) > 0 {

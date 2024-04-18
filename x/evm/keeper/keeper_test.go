@@ -69,10 +69,10 @@ type KeeperTestSuite struct {
 	appCodec codec.Codec
 	signer   keyring.Signer
 
-	enableFeemarket  bool
-	enableLondonHF   bool
-	mintFeeCollector bool
-	denom            string
+	enableFeemarket bool
+	enableLondonHF  bool
+	mintFeeBurner   bool
+	denom           string
 }
 
 var s *KeeperTestSuite
@@ -103,6 +103,7 @@ func (suite *KeeperTestSuite) SetupTestWithT(t require.TestingT) {
 	suite.SetupAppWithT(checkTx, t)
 }
 
+// SetupApp setup test environment, it uses`require.TestingT` to support both `testing.T` and `testing.B`.
 func (suite *KeeperTestSuite) SetupApp(checkTx bool) {
 	suite.SetupAppWithT(checkTx, suite.T())
 }
@@ -146,13 +147,13 @@ func (suite *KeeperTestSuite) SetupAppWithT(checkTx bool, t require.TestingT) {
 		return genesis
 	})
 
-	if suite.mintFeeCollector {
-		// mint some coin to fee collector
+	if suite.mintFeeBurner {
+		// mint some coin to fee burner escrow account
 		coins := sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdkmath.NewInt(int64(params.TxGas)-1)))
 		genesisState := app.NewTestGenesisState(suite.app.AppCodec())
 		balances := []banktypes.Balance{
 			{
-				Address: suite.app.AccountKeeper.GetModuleAddress(authtypes.FeeCollectorName).String(),
+				Address: types.FeeBurnerAccount.String(),
 				Coins:   coins,
 			},
 		}

@@ -328,7 +328,7 @@ func (suite *KeeperTestSuite) TestGasToRefund() {
 
 	for _, tc := range testCases {
 		suite.Run(fmt.Sprintf("Case %s", tc.name), func() {
-			suite.mintFeeCollector = true
+			suite.mintFeeBurner = true
 			suite.SetupTest() // reset
 			vmdb := suite.StateDB()
 			vmdb.AddRefund(10)
@@ -344,7 +344,7 @@ func (suite *KeeperTestSuite) TestGasToRefund() {
 			}
 		})
 	}
-	suite.mintFeeCollector = false
+	suite.mintFeeBurner = false
 }
 
 func (suite *KeeperTestSuite) TestRefundGas() {
@@ -410,7 +410,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 
 	for _, tc := range testCases {
 		suite.Run(fmt.Sprintf("Case %s", tc.name), func() {
-			suite.mintFeeCollector = true
+			suite.mintFeeBurner = true
 			suite.SetupTest() // reset
 
 			keeperParams := suite.app.EvmKeeper.GetParams(suite.ctx)
@@ -445,7 +445,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 			refund := keeper.GasToRefund(vmdb.GetRefund(), gasUsed, tc.refundQuotient)
 			suite.Require().Equal(tc.expGasRefund, refund)
 
-			err = suite.app.EvmKeeper.RefundGas(suite.ctx, m, refund, "aphoton")
+			err = suite.app.EvmKeeper.RefundExcessGas(suite.ctx, m, refund, "aphoton")
 			if tc.noError {
 				suite.Require().NoError(err)
 			} else {
@@ -453,7 +453,7 @@ func (suite *KeeperTestSuite) TestRefundGas() {
 			}
 		})
 	}
-	suite.mintFeeCollector = false
+	suite.mintFeeBurner = false
 }
 
 func (suite *KeeperTestSuite) TestResetGasMeterAndConsumeGas() {

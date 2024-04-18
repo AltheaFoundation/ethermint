@@ -65,7 +65,7 @@ type EvmTestSuite struct {
 	dynamicTxFee bool
 }
 
-// DoSetupTest setup test environment, it uses`require.TestingT` to support both `testing.T` and `testing.B`.
+// DoSetupTest setup test environment, it uses `require.TestingT` to support both `testing.T` and `testing.B`.
 func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 	checkTx := false
 
@@ -191,6 +191,7 @@ func TestEvmTestSuite(t *testing.T) {
 
 func (suite *EvmTestSuite) TestHandleMsgEthereumTx() {
 	var tx *types.MsgEthereumTx
+	var gasLimit, gasPrice uint64
 
 	testCases := []struct {
 		msg      string
@@ -201,7 +202,9 @@ func (suite *EvmTestSuite) TestHandleMsgEthereumTx() {
 			"passed",
 			func() {
 				to := common.BytesToAddress(suite.to)
-				tx = types.NewTx(suite.chainID, 0, &to, big.NewInt(100), 10_000_000, big.NewInt(10000), nil, nil, nil, nil)
+				gasLimit = 10_000_000
+				gasPrice = 10000
+				tx = types.NewTx(suite.chainID, 0, &to, big.NewInt(100), gasLimit, big.NewInt(int64(gasPrice)), nil, nil, nil, nil)
 				suite.SignTx(tx)
 			},
 			true,
@@ -209,7 +212,9 @@ func (suite *EvmTestSuite) TestHandleMsgEthereumTx() {
 		{
 			"insufficient balance",
 			func() {
-				tx = types.NewTxContract(suite.chainID, 0, big.NewInt(100), 0, big.NewInt(10000), nil, nil, nil, nil)
+				gasLimit = 0
+				gasPrice = 10000
+				tx = types.NewTxContract(suite.chainID, 0, big.NewInt(100), gasLimit, big.NewInt(int64(gasPrice)), nil, nil, nil, nil)
 				suite.SignTx(tx)
 			},
 			false,
@@ -217,7 +222,9 @@ func (suite *EvmTestSuite) TestHandleMsgEthereumTx() {
 		{
 			"tx encoding failed",
 			func() {
-				tx = types.NewTxContract(suite.chainID, 0, big.NewInt(100), 0, big.NewInt(10000), nil, nil, nil, nil)
+				gasLimit = 0
+				gasPrice = 10000
+				tx = types.NewTxContract(suite.chainID, 0, big.NewInt(100), gasLimit, big.NewInt(int64(gasPrice)), nil, nil, nil, nil)
 			},
 			false,
 		},
@@ -231,7 +238,9 @@ func (suite *EvmTestSuite) TestHandleMsgEthereumTx() {
 		{
 			"VerifySig failed",
 			func() {
-				tx = types.NewTxContract(suite.chainID, 0, big.NewInt(100), 0, big.NewInt(10000), nil, nil, nil, nil)
+				gasLimit = 0
+				gasPrice = 10000
+				tx = types.NewTxContract(suite.chainID, 0, big.NewInt(100), gasLimit, big.NewInt(int64(gasPrice)), nil, nil, nil, nil)
 			},
 			false,
 		},
@@ -242,6 +251,9 @@ func (suite *EvmTestSuite) TestHandleMsgEthereumTx() {
 			suite.SetupTest() // reset
 			//nolint
 			tc.malleate()
+			gasFee := big.NewInt(0).Mul(big.NewInt(int64(gasLimit)), big.NewInt(int64(gasPrice)))
+			suite.FundModuleAccount(types.FeeBurner, gasFee)
+
 			res, err := suite.handler(suite.ctx, tx)
 
 			//nolint
@@ -278,10 +290,13 @@ func (suite *EvmTestSuite) TestHandlerLogs() {
 
 	gasLimit := uint64(100000)
 	gasPrice := big.NewInt(1000000)
+	gasFee := big.NewInt(0).Mul(gasPrice, big.NewInt(int64(gasLimit)))
 
 	bytecode := common.FromHex("0x6080604052348015600f57600080fd5b5060117f775a94827b8fd9b519d36cd827093c664f93347070a554f65e4a6f56cd73889860405160405180910390a2603580604b6000396000f3fe6080604052600080fdfea165627a7a723058206cab665f0f557620554bb45adf266708d2bd349b8a4314bdff205ee8440e3c240029")
 	tx := types.NewTx(suite.chainID, 1, nil, big.NewInt(0), gasLimit, gasPrice, nil, nil, bytecode, nil)
 	suite.SignTx(tx)
+
+	suite.FundModuleAccount(types.FeeBurner, gasFee)
 
 	result, err := suite.handler(suite.ctx, tx)
 	suite.Require().NoError(err, "failed to handle eth tx msg")
@@ -293,6 +308,12 @@ func (suite *EvmTestSuite) TestHandlerLogs() {
 
 	suite.Require().Equal(len(txResponse.Logs), 1)
 	suite.Require().Equal(len(txResponse.Logs[0].Topics), 2)
+}
+
+func (suite *EvmTestSuite) FundModuleAccount(mod string, amount *big.Int) {
+	coins := sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdk.NewIntFromBigInt(amount)))
+	suite.Require().NoError(suite.app.BankKeeper.MintCoins(suite.ctx, types.ModuleName, coins))
+	suite.Require().NoError(suite.app.BankKeeper.SendCoinsFromModuleToModule(suite.ctx, types.ModuleName, types.FeeBurner, coins))
 }
 
 func (suite *EvmTestSuite) TestDeployAndCallContract() {
@@ -353,6 +374,9 @@ func (suite *EvmTestSuite) TestDeployAndCallContract() {
 	// Deploy contract - Owner.sol
 	gasLimit := uint64(100000000)
 	gasPrice := big.NewInt(10000)
+	gasFee := big.NewInt(0).Mul(big.NewInt(int64(gasLimit)), gasPrice)
+
+	suite.FundModuleAccount(types.FeeBurner, gasFee)
 
 	bytecode := common.FromHex("0x608060405234801561001057600080fd5b50336000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16600073ffffffffffffffffffffffffffffffffffffffff167f342827c97908e5e2f71151c08502a66d44b6f758e3ac2f1de95f02eb95f0a73560405160405180910390a36102c4806100dc6000396000f3fe608060405234801561001057600080fd5b5060043610610053576000357c010000000000000000000000000000000000000000000000000000000090048063893d20e814610058578063a6f9dae1146100a2575b600080fd5b6100606100e6565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b6100e4600480360360208110156100b857600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff16906020019092919050505061010f565b005b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff16905090565b6000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146101d1576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260138152602001807f43616c6c6572206973206e6f74206f776e65720000000000000000000000000081525060200191505060405180910390fd5b8073ffffffffffffffffffffffffffffffffffffffff166000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff167f342827c97908e5e2f71151c08502a66d44b6f758e3ac2f1de95f02eb95f0a73560405160405180910390a3806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055505056fea265627a7a72315820f397f2733a89198bc7fed0764083694c5b828791f39ebcbc9e414bccef14b48064736f6c63430005100032")
 	tx := types.NewTx(suite.chainID, 1, nil, big.NewInt(0), gasLimit, gasPrice, nil, nil, bytecode, nil)
@@ -370,6 +394,9 @@ func (suite *EvmTestSuite) TestDeployAndCallContract() {
 	// store - changeOwner
 	gasLimit = uint64(100000000000)
 	gasPrice = big.NewInt(100)
+	gasFee = big.NewInt(0).Mul(big.NewInt(int64(gasLimit)), gasPrice)
+	suite.FundModuleAccount(types.FeeBurner, gasFee)
+
 	receiver := crypto.CreateAddress(suite.from, 1)
 
 	storeAddr := "0xa6f9dae10000000000000000000000006a82e4a67715c8412a9114fbd2cbaefbc8181424"
@@ -388,6 +415,7 @@ func (suite *EvmTestSuite) TestDeployAndCallContract() {
 	bytecode = common.FromHex("0x893d20e8")
 	tx = types.NewTx(suite.chainID, 2, &receiver, big.NewInt(0), gasLimit, gasPrice, nil, nil, bytecode, nil)
 	suite.SignTx(tx)
+	suite.FundModuleAccount(types.FeeBurner, gasFee)
 
 	result, err = suite.handler(suite.ctx, tx)
 	suite.Require().NoError(err, "failed to handle eth tx msg")
