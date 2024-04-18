@@ -1,6 +1,8 @@
 package keeper_test
 
 import (
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 )
 
@@ -11,7 +13,9 @@ func (suite *KeeperTestSuite) TestEndBlock() {
 	err := suite.app.EvmKeeper.EndBlock(suite.ctx)
 	suite.Require().NoError(err)
 
-	// should emit 1 EventTypeBlockBloom event on EndBlock
-	suite.Require().Equal(1, len(em.Events()))
-	suite.Require().Equal(evmtypes.EventTypeBlockBloom, em.Events()[0].Type)
+	// should emit 3 events on EndBlock: 1 coin spent, 1 burn, 1 block bloom
+	suite.Require().Equal(3, len(em.Events()))
+	suite.Require().Equal(banktypes.EventTypeCoinSpent, em.Events()[0].Type)
+	suite.Require().Equal(banktypes.EventTypeCoinBurn, em.Events()[1].Type)
+	suite.Require().Equal(evmtypes.EventTypeBlockBloom, em.Events()[2].Type)
 }

@@ -37,6 +37,7 @@ func (k *Keeper) BeginBlock(ctx context.Context) error {
 func (k *Keeper) EndBlock(ctx context.Context) error {
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 
+	k.BurnConsumedGas(sdkCtx)
 	// Gas costs are handled within msg handler so costs should be ignored
 	infCtx := sdkCtx.WithGasMeter(storetypes.NewInfiniteGasMeter())
 
