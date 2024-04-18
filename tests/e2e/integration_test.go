@@ -827,6 +827,9 @@ func (s *IntegrationTestSuite) TestBatchETHTransactions() {
 
 	syncCtx := s.network.Validators[0].ClientCtx.WithBroadcastMode(flags.BroadcastBlock)
 	txResponse, err := syncCtx.BroadcastTx(txBytes)
+	if err != nil || txResponse.Code != 0 {
+		fmt.Println("failed transaction: ", txResponse, " err: ", err)
+	}
 	s.Require().NoError(err)
 	s.Require().Equal(uint32(0), txResponse.Code)
 

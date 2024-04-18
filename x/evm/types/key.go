@@ -2,6 +2,8 @@ package types
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 )
 
 const (
@@ -19,7 +21,11 @@ const (
 
 	// RouterKey uses module name for routing
 	RouterKey = ModuleName
+
+	FeeBurner = "evm_fee_burner"
 )
+
+var FeeBurnerAccount = authtypes.NewModuleAddress(FeeBurner)
 
 // prefix bytes for the EVM persistent store
 const (
