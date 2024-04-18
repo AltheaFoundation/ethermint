@@ -74,14 +74,29 @@ func (k Keeper) DeductTxCostsFromUserBalance(
 	fees := sdk.Coins{sdk.NewCoin(denom, sdk.NewIntFromBigInt(feeAmt))}
 
 	// deduct the full gas cost from the user balance
-	if err := authante.DeductFees(k.bankKeeper, ctx, signerAcc, fees); err != nil {
+	if err := k.EscrowGasFee(ctx, signerAcc.GetAddress(), fees); err != nil {
 		return nil, sdkerrors.Wrapf(
 			err,
-			"failed to deduct full gas cost %s from the user %s balance",
+			"failed to escrow full gas cost %s from user %s 's balance",
 			fees, msgEthTx.From,
 		)
 	}
 	return fees, nil
+}
+
+// EscrowGasFee collects the `fees` from `acc` and custodies the coins in the EVM FeeBurner account
+// Note: `fees` should be the maximum gas fee paid by the user, excess will be refunded later
+func (k Keeper) EscrowGasFee(ctx sdk.Context, acc sdk.AccAddress, fees sdk.Coins) error {
+	if !fees.IsValid() {
+		return sdkerrors.Wrapf(sdkerrors.ErrInsufficientFee, "invalid fee amount: %s", fees)
+	}
+
+	err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, acc, evmtypes.FeeBurner, fees)
+	if err != nil {
+		return sdkerrors.Wrapf(sdkerrors.ErrInsufficientFunds, err.Error())
+	}
+
+	return nil
 }
 
 // CheckSenderBalance validates that the tx cost value is positive and that the

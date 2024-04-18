@@ -8,7 +8,6 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	ethermint "github.com/evmos/ethermint/types"
@@ -280,9 +279,10 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, tx *ethtypes.Transaction) (*t
 		}
 	}
 
-	// refund gas in order to match the Ethereum gas consumption instead of the default SDK one.
-	if err = k.RefundGas(ctx, msg, msg.Gas()-res.GasUsed, cfg.Params.EvmDenom); err != nil {
-		return nil, sdkerrors.Wrapf(err, "failed to refund gas leftover gas to sender %s", msg.From())
+	// refund gas in order to match the Ethereum gas consumption instead of the default SDK one, then burn
+	// the collected amount
+	if err = k.RefundExcessGas(ctx, msg, msg.Gas()-res.GasUsed, cfg.Params.EvmDenom); err != nil {
+		return nil, sdkerrors.Wrapf(err, "failed to refund excess gas to sender %s or burn ", msg.From())
 	}
 
 	if len(receipt.Logs) > 0 {
@@ -470,13 +470,15 @@ func (k *Keeper) GetEthIntrinsicGas(ctx sdk.Context, msg core.Message, cfg *para
 	return core.IntrinsicGas(msg.Data(), msg.AccessList(), isContractCreation, homestead, istanbul)
 }
 
-// RefundGas transfers the leftover gas to the sender of the message, caped to half of the total gas
-// consumed in the transaction. Additionally, the function sets the total gas consumed to the value
+// RefundExcessGas transfers the leftover gas to the sender of the message
+// Additionally, the function sets the total gas consumed to the value
 // returned by the EVM execution, thus ignoring the previous intrinsic gas consumed during in the
 // AnteHandler.
-func (k *Keeper) RefundGas(ctx sdk.Context, msg core.Message, leftoverGas uint64, denom string) error {
+// The remaining gas will be burnt in the EndBlocker
+func (k *Keeper) RefundExcessGas(ctx sdk.Context, msg core.Message, leftoverGas uint64, denom string) error {
 	// Return EVM tokens for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(leftoverGas), msg.GasPrice())
+	gasAccountBalance := k.bankKeeper.GetBalance(ctx, types.FeeBurnerAccount, denom)
 
 	switch remaining.Sign() {
 	case -1:
@@ -484,19 +486,30 @@ func (k *Keeper) RefundGas(ctx sdk.Context, msg core.Message, leftoverGas uint64
 		return sdkerrors.Wrapf(types.ErrInvalidRefund, "refunded amount value cannot be negative %d", remaining.Int64())
 	case 1:
 		// positive amount refund
-		refundedCoins := sdk.Coins{sdk.NewCoin(denom, sdk.NewIntFromBigInt(remaining))}
+		refundCoin := sdk.NewCoin(denom, sdk.NewIntFromBigInt(remaining))
+		if gasAccountBalance.IsLT(refundCoin) {
+			return sdkerrors.Wrapf(sdkerrors.ErrInsufficientFunds, "fee burner account has insufficient funds (%s) to refund %s", gasAccountBalance.String(), refundCoin.String())
+		}
 
-		// refund to sender from the fee collector module account, which is the escrow account in charge of collecting tx fees
+		// refund to sender from the fee burner account, which is the escrow account in charge of collecting and burning EVM tx fees
 
-		err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, authtypes.FeeCollectorName, msg.From().Bytes(), refundedCoins)
+		err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.FeeBurner, msg.From().Bytes(), sdk.NewCoins(refundCoin))
 		if err != nil {
-			err = sdkerrors.Wrapf(sdkerrors.ErrInsufficientFunds, "fee collector account failed to refund fees: %s", err.Error())
-			return sdkerrors.Wrapf(err, "failed to refund %d leftover gas (%s)", leftoverGas, refundedCoins.String())
+			return sdkerrors.Wrapf(err, "failed to refund %d leftover gas (%s)", leftoverGas, refundCoin.String())
 		}
 	default:
 		// no refund, consume gas and update the tx gas meter
 	}
 
+	return nil
+}
+
+func (k *Keeper) BurnConsumedGas(ctx sdk.Context) error {
+	denom := k.GetParams(ctx).EvmDenom
+	gasAccountBalance := k.bankKeeper.GetBalance(ctx, types.FeeBurnerAccount, denom)
+	if err := k.bankKeeper.BurnCoins(ctx, types.FeeBurner, sdk.NewCoins(gasAccountBalance)); err != nil {
+		return sdkerrors.Wrap(err, "failed to burn FeeBurner account balance")
+	}
 	return nil
 }
 
