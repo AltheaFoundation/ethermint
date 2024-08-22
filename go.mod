@@ -3,18 +3,36 @@ module github.com/evmos/ethermint
 go 1.19
 
 require (
+	github.com/cosmos/cosmos-sdk v0.46.11
+	github.com/cosmos/ibc-go/v6 v6.1.0
+	github.com/ethereum/go-ethereum v1.10.26
+)
+
+replace (
+	github.com/cosmos/cosmos-sdk => github.com/cosmos/cosmos-sdk v0.46.11
+	github.com/cosmos/ibc-go/v6 => github.com/cosmos/ibc-go/v6 v6.1.0
+	github.com/ethereum/go-ethereum => github.com/ethereum/go-ethereum v1.10.26
+	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.27
+
+	// use cosmos keyring
+	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
+	// Fix upstream GHSA-h395-qcrw-5vmq vulnerability.
+	// TODO Remove it: https://github.com/cosmos/cosmos-sdk/issues/10409
+	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.0
+	// use cosmos flavored protobufs
+	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+)
+
+require (
 	cosmossdk.io/errors v1.0.0-beta.7
 	cosmossdk.io/math v1.0.0-rc.0
 	github.com/armon/go-metrics v0.4.1
 	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cosmos/cosmos-proto v1.0.0-beta.3
-	github.com/cosmos/cosmos-sdk v0.46.11
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/cosmos/gogoproto v1.4.7
-	github.com/cosmos/ibc-go/v6 v6.1.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/ethereum/go-ethereum v1.10.26
 	github.com/gogo/protobuf v1.3.3
 	github.com/golang/protobuf v1.5.3
 	github.com/gorilla/mux v1.8.0
@@ -194,15 +212,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	nhooyr.io/websocket v1.8.6 // indirect
-)
-
-replace (
-	// use cosmos keyring
-	github.com/99designs/keyring => github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76
-	// Fix upstream GHSA-h395-qcrw-5vmq vulnerability.
-	// TODO Remove it: https://github.com/cosmos/cosmos-sdk/issues/10409
-	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.7.0
-	// use cosmos flavored protobufs
-	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.27
 )
