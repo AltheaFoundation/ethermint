@@ -354,8 +354,6 @@ github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE
 github.com/coinbase/kryptology v1.8.0/go.mod h1:RYXOAPdzOGUe3qlSFkMGn58i3xUA8hmxYHksuq+8ciI=
 github.com/coinbase/rosetta-sdk-go v0.7.9 h1:lqllBjMnazTjIqYrOGv8h8jxjg9+hJazIGZr9ZvoCcA=
 github.com/coinbase/rosetta-sdk-go v0.7.9/go.mod h1:0/knutI7XGVqXmmH4OQD8OckFrbQ8yMsUZTG7FXCR2M=
-github.com/cometbft/cometbft v0.34.27 h1:ri6BvmwjWR0gurYjywcBqRe4bbwc3QVs9KRcCzgh/J0=
-github.com/cometbft/cometbft v0.34.27/go.mod h1:BcCbhKv7ieM0KEddnYXvQZR+pZykTKReJJYf7YC7qhw=
 github.com/cometbft/cometbft v0.34.29 h1:Q4FqMevP9du2pOgryZJHpDV2eA6jg/kMYxBj9ZTY6VQ=
 github.com/cometbft/cometbft v0.34.29/go.mod h1:L9shMfbkZ8B+7JlwANEr+NZbBcn+hBpwdbeYvA5rLCw=
 github.com/cometbft/cometbft-db v0.7.0 h1:uBjbrBx4QzU0zOEnU8KxoDl18dMNgDh+zZRUE0ucsbo=
@@ -388,8 +386,8 @@ github.com/cosmos/gorocksdb v1.2.0 h1:d0l3jJG8M4hBouIZq0mDUHZ+zjOx044J3nGRskwTb4
 github.com/cosmos/gorocksdb v1.2.0/go.mod h1:aaKvKItm514hKfNJpUJXnnOWeBnk2GL4+Qw9NHizILw=
 github.com/cosmos/iavl v0.19.6 h1:XY78yEeNPrEYyNCKlqr9chrwoeSDJ0bV2VjocTk//OU=
 github.com/cosmos/iavl v0.19.6/go.mod h1:X9PKD3J0iFxdmgNLa7b2LYWdsGd90ToV5cAONApkEPw=
-github.com/cosmos/ibc-go/v6 v6.1.0 h1:o7oXws2vKkKfOFzJI+oNylRn44PCNt5wzHd/zKQKbvQ=
-github.com/cosmos/ibc-go/v6 v6.1.0/go.mod h1:CY3zh2HLfetRiW8LY6kVHMATe90Wj/UOoY8T6cuB0is=
+github.com/cosmos/ibc-go/v6 v6.2.1 h1:NiaDXTRhKwf3n9kELD4VRIe5zby1yk1jBvaz9tXTQ6k=
+github.com/cosmos/ibc-go/v6 v6.2.1/go.mod h1:XLsARy4Y7+GtAqzMcxNdlQf6lx+ti1e8KcMGv5NIK7A=
 github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76 h1:DdzS1m6o/pCqeZ8VOAit/gyATedRgjvkVI+UCrLpyuU=
 github.com/cosmos/keyring v1.1.7-0.20210622111912-ef00f8ac3d76/go.mod h1:0mkLWIoZuQ7uBoospo5Q9zIpqq6rYCPJDSUdeCJvPM8=
 github.com/cosmos/ledger-cosmos-go v0.12.4 h1:drvWt+GJP7Aiw550yeb3ON/zsrgW0jgh5saFCr7pDnw=

@@ -4,13 +4,13 @@ go 1.19
 
 require (
 	github.com/cosmos/cosmos-sdk v0.46.16
-	github.com/cosmos/ibc-go/v6 v6.1.0
+	github.com/cosmos/ibc-go/v6 v6.2.1
 	github.com/ethereum/go-ethereum v1.10.26
 )
 
 replace (
 	github.com/cosmos/cosmos-sdk => github.com/cosmos/cosmos-sdk v0.46.16
-	github.com/cosmos/ibc-go/v6 => github.com/cosmos/ibc-go/v6 v6.1.0
+	github.com/cosmos/ibc-go/v6 => github.com/cosmos/ibc-go/v6 v6.2.1
 	github.com/ethereum/go-ethereum => github.com/ethereum/go-ethereum v1.10.26
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29
 )
