@@ -287,6 +287,10 @@ func VerifySignature(
 		if err != nil {
 			return errorsmod.Wrap(err, "failed to create EIP-712 typed data from tx")
 		}
+		fmt.Printf("Typed Data Types: %v\n", typedData.Types)
+		fmt.Printf("Typed Data Domain: %v\n", typedData.Domain)
+		fmt.Printf("Typed Data PrimaryType: %v\n", typedData.PrimaryType)
+		fmt.Printf("Typed Data Message: %v\n", typedData.Message)
 
 		sigHash, _, err := apitypes.TypedDataAndHash(typedData)
 		if err != nil {
