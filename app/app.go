@@ -845,7 +845,7 @@ func (app *EthermintApp) setAnteHandler(txConfig client.TxConfig, maxGasWanted u
 				sdk.MsgTypeURL(&vestingtypes.MsgCreatePermanentLockedAccount{}),
 				sdk.MsgTypeURL(&vestingtypes.MsgCreatePeriodicVestingAccount{}),
 			},
-			EvmChainID: "9000",
+			EvmChainIDs: []string{"9000"},
 		},
 	)
 	if err != nil {
