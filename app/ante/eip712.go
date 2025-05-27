@@ -67,7 +67,7 @@ func NewLegacyCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
 		authante.NewValidateSigCountDecorator(options.AccountKeeper),
 		authante.NewSigGasConsumeDecorator(options.AccountKeeper, options.SigGasConsumer),
 		// Note: signature verification uses EIP instead of the cosmos signature validator
-		NewLegacyEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler, options.EvmChainID),
+		NewLegacyEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler, options.EvmChainIDs),
 		authante.NewIncrementSequenceDecorator(options.AccountKeeper),
 		ibcante.NewRedundantRelayDecorator(options.IBCKeeper),
 		NewGasWantedDecorator(options.EvmKeeper, options.FeeMarketKeeper),
@@ -83,21 +83,21 @@ func NewLegacyCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
 type LegacyEip712SigVerificationDecorator struct {
 	ak              evmtypes.AccountKeeper
 	signModeHandler authsigning.SignModeHandler
-	evmChainId      string
+	evmChainIds     []string
 }
 
 // Deprecated: NewLegacyEip712SigVerificationDecorator creates a new LegacyEip712SigVerificationDecorator
-// Allows an optional EVM Chain ID (e.g. 1 for Ethereum Mainnet). The upstream Evmos repo requires the Cosmos Chain ID
-// to be parseable by a regex but evmChainId removes that restriction by allowing an override.
+// Allows an optional set of EVM Chain IDs (e.g. 1 for Ethereum Mainnet). The upstream Evmos repo requires the Cosmos Chain ID
+// to be parseable by a regex but evmChainIds removes that restriction by allowing a list of overrides.
 func NewLegacyEip712SigVerificationDecorator(
 	ak evmtypes.AccountKeeper,
 	signModeHandler authsigning.SignModeHandler,
-	evmChainId string,
+	evmChainIds []string,
 ) LegacyEip712SigVerificationDecorator {
 	return LegacyEip712SigVerificationDecorator{
 		ak:              ak,
 		signModeHandler: signModeHandler,
-		evmChainId:      evmChainId,
+		evmChainIds:     evmChainIds,
 	}
 }
 
@@ -179,18 +179,6 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 		accNum = acc.GetAccountNumber()
 	}
 
-	// There are two ChainIDs to verify, the Cosmos string and the EVM number. First try the EVM override value,
-	// then try to parse if no override provided
-	var evmChainID string = svd.evmChainId
-	if evmChainID == "" {
-		cId, err := ethermint.ParseChainID(chainID)
-
-		if err != nil {
-			return ctx, errorsmod.Wrapf(err, "failed to parse chainID: %s", chainID)
-		}
-		evmChainID = cId.String()
-	}
-
 	signerData := authsigning.SignerData{
 		ChainID:       chainID,
 		AccountNumber: accNum,
@@ -201,11 +189,32 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 		return next(ctx, tx, simulate)
 	}
 
-	if err := VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx, evmChainID); err != nil {
-		errMsg := fmt.Errorf("signature verification failed; please verify account number (%d) and chain-id (%s) and evm-chain-id (%s): %w", accNum, chainID, evmChainID, err)
-		return ctx, errorsmod.Wrap(errortypes.ErrUnauthorized, errMsg.Error())
+	// There are two ChainIDs to verify, the Cosmos string and the EVM number. First try the EVM override values,
+	// then try to parse if no overrides provided
+	var evmChainIds []string = svd.evmChainIds
+	if len(svd.evmChainIds) == 0 {
+		cId, err := ethermint.ParseChainID(chainID)
+		if err != nil {
+			return ctx, errorsmod.Wrapf(err, "failed to parse chainID: %s", chainID)
+		}
+		evmChainIds = append(evmChainIds, cId.String())
 	}
 
+	// Attempt to verify the signature against all EVM Chain IDs
+	for _, evmChainID := range evmChainIds {
+		if err = VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx, evmChainID); err != nil {
+			continue
+		} else {
+			break
+		}
+	}
+
+	// If none succeeded, return an error
+	if err != nil {
+		errMsg := fmt.Errorf("signature verification failed; please verify account number (%d) and chain-id (%s) and evm-chain-id (one of %s): %w", accNum, chainID, evmChainIds, err)
+		return ctx, errorsmod.Wrap(errortypes.ErrUnauthorized, errMsg.Error())
+	}
+	// Otherwise one of the verifications succeeded
 	return next(ctx, tx, simulate)
 }
 

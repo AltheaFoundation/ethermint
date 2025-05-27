@@ -47,7 +47,7 @@ type HandlerOptions struct {
 	ExtensionOptionChecker ante.ExtensionOptionChecker
 	TxFeeChecker           ante.TxFeeChecker
 	DisabledAuthzMsgs      []string
-	EvmChainID             string
+	EvmChainIDs            []string
 }
 
 func (options HandlerOptions) validate() error {
