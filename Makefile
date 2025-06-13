@@ -3,13 +3,16 @@
 PACKAGES_NOSIMULATION=$(shell go list ./... | grep -v '/simulation')
 PACKAGES_SIMTEST=$(shell go list ./... | grep '/simulation')
 VERSION ?= $(shell echo $(shell git describe --tags `git rev-list --tags="v*" --max-count=1`) | sed 's/^v//')
-TMVERSION := $(shell go list -m github.com/tendermint/tendermint | sed 's:.* ::')
+TMVERSION := $(shell go list -m github.com/cometbft/cometbft | sed 's:.* ::')
 COMMIT := $(shell git log -1 --format='%H')
 LEDGER_ENABLED ?= true
 BINDIR ?= $(GOPATH)/bin
 ETHERMINT_BINARY = ethermintd
 ETHERMINT_DIR = ethermint
 BUILDDIR ?= $(CURDIR)/build
+BINDIR := $(BUILDDIR)/bin# for binary dev dependencies
+BUILD_CACHE_DIR := $(BUILDDIR)/.cache# caching for non-artifact outputs
+CONTRIBDIR ?= $(CURDIR)/contrib
 SIMAPP = ./app
 HTTPS_GIT := https://github.com/evmos/ethermint.git
 PROJECT_NAME = $(shell git remote get-url origin | xargs basename -s .git)
@@ -19,6 +22,8 @@ PROJECT := ethermint
 DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DOCKER_TAG := $(COMMIT_HASH)
+OS_FAMILY := $(shell uname -s)
+MACHINE := $(shell uname -m)
 
 # RocksDB is a native dependency, so we don't assume the library is installed.
 # Instead, it must be explicitly enabled and we warn when it is not.
@@ -72,7 +77,7 @@ ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=ethermint \
 		  -X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
 		  -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) \
 			-X "github.com/cosmos/cosmos-sdk/version.BuildTags=$(build_tags_comma_sep)" \
-			-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(TMVERSION)
+			-X github.com/cometbft/cometbft/version.TMCoreSemVer=$(TMVERSION)
 
 ifeq ($(ENABLE_ROCKSDB),true)
   BUILD_TAGS += rocksdb_build
@@ -121,9 +126,6 @@ endif
 ifneq (,$(findstring nooptimization,$(COSMOS_BUILD_OPTIONS)))
   BUILD_FLAGS += -gcflags "all=-N -l"
 endif
-
-# # The below include contains the tools and runsim targets.
-# include contrib/devtools/Makefile
 
 ###############################################################################
 ###                                  Build                                  ###
@@ -212,6 +214,12 @@ release:
 ###                          Tools & Dependencies                           ###
 ###############################################################################
 
+# Import the protobuf makefile directives
+include $(CONTRIBDIR)/deps.mk
+include $(CONTRIBDIR)/lint.mk
+include $(CONTRIBDIR)/proto.mk
+include $(CONTRIBDIR)/proto-deps.mk
+
 TOOLS_DESTDIR  ?= $(GOPATH)/bin
 STATIK         = $(TOOLS_DESTDIR)/statik
 RUNSIM         = $(TOOLS_DESTDIR)/runsim
@@ -253,13 +261,6 @@ else
 	@echo "gencodec already installed; skipping..."
 endif
 
-ifeq (, $(shell which protoc-gen-go))
-	@echo "Installing protoc-gen-go..."
-	@go get github.com/fjl/gencodec github.com/golang/protobuf/protoc-gen-go
-else
-	@echo "protoc-gen-go already installed; skipping..."
-endif
-
 ifeq (, $(shell which solcjs))
 	@echo "Installing solcjs..."
 	@npm install -g solc@0.5.11
@@ -268,7 +269,7 @@ else
 endif
 
 tools: tools-stamp
-tools-stamp: contract-tools proto-tools statik runsim
+tools-stamp: contract-tools statik runsim
 	# Create dummy file to satisfy dependency and avoid
 	# rebuilding when this Makefile target is hit twice
 	# in a row.
@@ -278,7 +279,7 @@ tools-clean:
 	rm -f $(RUNSIM)
 	rm -f tools-stamp
 
-.PHONY: runsim statik tools contract-tools proto-tools  tools-stamp tools-clean
+.PHONY: runsim statik tools contract-tools tools-stamp tools-clean
 
 go.sum: go.mod
 	echo "Ensure dependencies have not been modified ..." >&2
@@ -387,67 +388,6 @@ format-fix:
 	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" -not -path "./client/docs/statik/statik.go" -not -name '*.pb.go' -not -name '*.pb.gw.go' | xargs gofumpt -w -s
 	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" -not -path "./client/docs/statik/statik.go" -not -name '*.pb.go' -not -name '*.pb.gw.go' | xargs misspell -w
 .PHONY: format
-
-###############################################################################
-###                                Protobuf                                 ###
-###############################################################################
-
-# ------
-# NOTE: Link to the tendermintdev/sdk-proto-gen docker images: 
-#       https://hub.docker.com/r/tendermintdev/sdk-proto-gen/tags
-#
-protoVer=v0.7
-protoImageName=tendermintdev/sdk-proto-gen:$(protoVer)
-protoImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protoImageName)
-# ------
-# NOTE: cosmos/proto-builder image is needed because clang-format is not installed
-#       on the tendermintdev/sdk-proto-gen docker image.
-#		Link to the cosmos/proto-builder docker images:
-#       https://github.com/cosmos/cosmos-sdk/pkgs/container/proto-builder
-#
-protoCosmosVer=0.11.2
-protoCosmosName=ghcr.io/cosmos/proto-builder:$(protoCosmosVer)
-protoCosmosImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protoCosmosName)
-# ------
-# NOTE: Link to the yoheimuta/protolint docker images:
-#       https://hub.docker.com/r/yoheimuta/protolint/tags
-#
-protolintVer=0.42.2
-protolintName=yoheimuta/protolint:$(protolintVer)
-protolintImage=$(DOCKER) run --network host --rm -v $(CURDIR):/workspace --workdir /workspace $(protolintName)
-
-
-# ------
-# NOTE: If you are experiencing problems running these commands, try deleting
-#       the docker images and execute the desired command again.
-#
-proto-all: proto-format proto-lint proto-gen
-
-proto-gen:
-	@echo "Generating Protobuf files"
-	$(protoImage) sh ./scripts/protocgen.sh
-
-
-# TODO: Rethink API docs generation
-# proto-swagger-gen:
-# 	@echo "Generating Protobuf Swagger"
-# 	$(protoImage) sh ./scripts/protoc-swagger-gen.sh
-
-proto-format:
-	@echo "Formatting Protobuf files"
-	$(protoCosmosImage) find ./ -name *.proto -exec clang-format -i {} \;
-
-# NOTE: The linter configuration lives in .protolint.yaml
-proto-lint:
-	@echo "Linting Protobuf files"
-	$(protolintImage) lint ./proto
-
-proto-check-breaking:
-	@echo "Checking Protobuf files for breaking changes"
-	$(protoImage) buf breaking --against $(HTTPS_GIT)#branch=main
-
-
-.PHONY: proto-all proto-gen proto-gen-any proto-format proto-lint proto-check-breaking
 
 ###############################################################################
 ###                                Localnet                                 ###

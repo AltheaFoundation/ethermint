@@ -2,9 +2,11 @@ package ante_test
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
+	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/ethereum/go-ethereum/common"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -270,7 +272,7 @@ func (suite *AnteTestSuite) TestRejectDeliverMsgsInAuthz() {
 					testAddresses[1],
 					[]sdk.Msg{
 						createMsgSend(testAddresses),
-						&evmtypes.MsgEthereumTx{},
+						createMsgEthereumTx(),
 					},
 				),
 			},
@@ -283,7 +285,7 @@ func (suite *AnteTestSuite) TestRejectDeliverMsgsInAuthz() {
 					testAddresses[1],
 					2,
 					[]sdk.Msg{
-						&evmtypes.MsgEthereumTx{},
+						createMsgEthereumTx(),
 					},
 				),
 			},
@@ -395,6 +397,11 @@ func createMsgSend(testAddresses []sdk.AccAddress) *banktypes.MsgSend {
 		testAddresses[3],
 		sdk.NewCoins(sdk.NewInt64Coin(evmtypes.DefaultEVMDenom, 1e8)),
 	)
+}
+
+func createMsgEthereumTx() *evmtypes.MsgEthereumTx {
+	zeroAddr := common.HexToAddress("0x0000000000000000000000000000000000000000")
+	return evmtypes.NewTx(big.NewInt(9000), 0, &zeroAddr, big.NewInt(0), 1000000, big.NewInt(0), big.NewInt(0), big.NewInt(0), []byte{}, nil)
 }
 
 func createNestedMsgExec(grantee sdk.AccAddress, numLevels int, msgsToExec []sdk.Msg) *authz.MsgExec {

@@ -27,7 +27,6 @@ import (
 	kmultisig "github.com/cosmos/cosmos-sdk/crypto/keys/multisig"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/crypto/types/multisig"
-	"github.com/cosmos/cosmos-sdk/simapp"
 	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
@@ -49,13 +48,15 @@ import (
 	ante "github.com/evmos/ethermint/app/ante"
 	"github.com/evmos/ethermint/encoding"
 	"github.com/evmos/ethermint/tests"
+	ethermint "github.com/evmos/ethermint/types"
 	"github.com/evmos/ethermint/x/evm/statedb"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 	feemarkettypes "github.com/evmos/ethermint/x/feemarket/types"
 
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 )
 
+// nolint: copylocks
 type AnteTestSuite struct {
 	suite.Suite
 
@@ -79,12 +80,13 @@ func (suite *AnteTestSuite) StateDB() *statedb.StateDB {
 }
 
 func (suite *AnteTestSuite) SetupTest() {
+	fmt.Println("SetupTest")
 	checkTx := false
 	priv, err := ethsecp256k1.GenerateKey()
 	suite.Require().NoError(err)
 	suite.priv = priv
 
-	suite.app = app.Setup(checkTx, func(app *app.EthermintApp, genesis simapp.GenesisState) simapp.GenesisState {
+	suite.app = app.Setup(checkTx, func(app *app.EthermintApp, genesis ethermint.GenesisState) ethermint.GenesisState {
 		if suite.enableFeemarket {
 			// setup feemarketGenesis params
 			feemarketGenesis := feemarkettypes.DefaultGenesisState()
@@ -111,7 +113,7 @@ func (suite *AnteTestSuite) SetupTest() {
 		}
 		genesis[evmtypes.ModuleName] = app.AppCodec().MustMarshalJSON(evmGenesis)
 		return genesis
-	})
+	}, suite.T())
 
 	suite.ctx = suite.app.BaseApp.NewContext(checkTx, tmproto.Header{Height: 2, ChainID: testutil.TestnetChainID + "-1", Time: time.Now().UTC()})
 	suite.ctx = suite.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(evmtypes.DefaultEVMDenom, sdk.OneInt())))
@@ -423,6 +425,8 @@ func (suite *AnteTestSuite) CreateTestEIP712SubmitProposalV1(from sdk.AccAddress
 		sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(100))),
 		sdk.MustBech32ifyAddressBytes(sdk.GetConfig().GetBech32AccountAddrPrefix(), from.Bytes()),
 		"Metadata",
+		"Title",
+		"Summary",
 	)
 
 	suite.Require().NoError(err)

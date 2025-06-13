@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/cometbft/cometbft/libs/log"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
@@ -13,10 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/evmos/ethermint/encoding"
 	ethermint "github.com/evmos/ethermint/types"
-	"github.com/evmos/ethermint/x/evm/types"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
-	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 var _ DynamicFeeEVMKeeper = MockEVMKeeper{}
@@ -154,7 +153,7 @@ func TestSDKTxFeeChecker(t *testing.T) {
 			func() sdk.Tx {
 				txBuilder := encodingConfig.TxConfig.NewTxBuilder()
 				txBuilder.SetGasLimit(1)
-				txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("aphoton", sdk.NewInt(10).Mul(types.DefaultPriorityReduction).Add(sdk.NewInt(10)))))
+				txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("aphoton", sdk.NewInt(10).Mul(evmtypes.DefaultPriorityReduction).Add(sdk.NewInt(10)))))
 				return txBuilder.GetTx()
 			},
 			"10000010aphoton",
@@ -170,7 +169,7 @@ func TestSDKTxFeeChecker(t *testing.T) {
 			func() sdk.Tx {
 				txBuilder := encodingConfig.TxConfig.NewTxBuilder().(authtx.ExtensionOptionsTxBuilder)
 				txBuilder.SetGasLimit(1)
-				txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("aphoton", sdk.NewInt(10).Mul(types.DefaultPriorityReduction))))
+				txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("aphoton", sdk.NewInt(10).Mul(evmtypes.DefaultPriorityReduction))))
 
 				option, err := codectypes.NewAnyWithValue(&ethermint.ExtensionOptionDynamicFeeTx{})
 				require.NoError(t, err)
@@ -190,10 +189,10 @@ func TestSDKTxFeeChecker(t *testing.T) {
 			func() sdk.Tx {
 				txBuilder := encodingConfig.TxConfig.NewTxBuilder().(authtx.ExtensionOptionsTxBuilder)
 				txBuilder.SetGasLimit(1)
-				txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("aphoton", sdk.NewInt(10).Mul(types.DefaultPriorityReduction).Add(sdk.NewInt(10)))))
+				txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewCoin("aphoton", sdk.NewInt(10).Mul(evmtypes.DefaultPriorityReduction).Add(sdk.NewInt(10)))))
 
 				option, err := codectypes.NewAnyWithValue(&ethermint.ExtensionOptionDynamicFeeTx{
-					MaxPriorityPrice: sdk.NewInt(5).Mul(types.DefaultPriorityReduction),
+					MaxPriorityPrice: sdk.NewInt(5).Mul(evmtypes.DefaultPriorityReduction),
 				})
 				require.NoError(t, err)
 				txBuilder.SetExtensionOptions(option)

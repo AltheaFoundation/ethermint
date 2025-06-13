@@ -19,9 +19,9 @@ import (
 	"context"
 	"fmt"
 
+	rpcclient "github.com/cometbft/cometbft/rpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
 	ethermint "github.com/evmos/ethermint/types"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
 )
 
 // PublicAPI is the eth_ prefixed set of APIs in the Web3 JSON-RPC spec.
@@ -40,7 +40,9 @@ func NewPublicAPI(clientCtx client.Context) *PublicAPI {
 
 	return &PublicAPI{
 		networkVersion: chainIDEpoch.Uint64(),
-		tmClient:       clientCtx.Client,
+		// The type (but not the implementation) of the client is TendermintRPC, which was changed in
+		// some testing commit to a reductive interface, we cast here to the needed type.
+		tmClient: clientCtx.Client.(rpcclient.Client),
 	}
 }
 

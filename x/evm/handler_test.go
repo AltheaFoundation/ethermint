@@ -6,15 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evmos/ethermint/encoding"
 	"github.com/evmos/ethermint/x/evm/keeper"
 
 	sdkmath "cosmossdk.io/math"
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	tmjson "github.com/tendermint/tendermint/libs/json"
+	abci "github.com/cometbft/cometbft/abci/types"
+	tmjson "github.com/cometbft/cometbft/libs/json"
 
-	"github.com/cosmos/cosmos-sdk/simapp"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
@@ -41,11 +41,11 @@ import (
 	"github.com/evmos/ethermint/x/evm/statedb"
 	"github.com/evmos/ethermint/x/evm/types"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
+	"github.com/cometbft/cometbft/crypto/tmhash"
+	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
+	tmversion "github.com/cometbft/cometbft/proto/tendermint/version"
 
-	"github.com/tendermint/tendermint/version"
+	"github.com/cometbft/cometbft/version"
 )
 
 type EvmTestSuite struct {
@@ -80,7 +80,7 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 	require.NoError(t, err)
 	consAddress := sdk.ConsAddress(priv.PubKey().Address())
 
-	suite.app = app.Setup(checkTx, func(app *app.EthermintApp, genesis simapp.GenesisState) simapp.GenesisState {
+	suite.app = app.Setup(checkTx, func(app *app.EthermintApp, genesis ethermint.GenesisState) ethermint.GenesisState {
 		if suite.dynamicTxFee {
 			feemarketGenesis := feemarkettypes.DefaultGenesisState()
 			feemarketGenesis.Params.EnableHeight = 1
@@ -88,10 +88,12 @@ func (suite *EvmTestSuite) DoSetupTest(t require.TestingT) {
 			genesis[feemarkettypes.ModuleName] = app.AppCodec().MustMarshalJSON(feemarketGenesis)
 		}
 		return genesis
-	})
+	}, suite.T())
 
 	coins := sdk.NewCoins(sdk.NewCoin(types.DefaultEVMDenom, sdkmath.NewInt(100000000000000)))
-	genesisState := app.NewTestGenesisState(suite.app.AppCodec())
+	encCfg := encoding.MakeConfig(app.ModuleBasics)
+	genesisState := app.ModuleBasics.DefaultGenesis(encCfg.Codec)
+	genesisState = app.NewTestGenesisState(&app.TestApp{EthermintApp: *suite.app}, genesisState)
 	b32address := sdk.MustBech32ifyAddressBytes(sdk.GetConfig().GetBech32AccountAddrPrefix(), priv.PubKey().Address().Bytes())
 	balances := []banktypes.Balance{
 		{

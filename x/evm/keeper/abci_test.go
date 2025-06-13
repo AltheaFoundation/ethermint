@@ -1,7 +1,7 @@
 package keeper_test
 
 import (
-	"github.com/tendermint/tendermint/abci/types"
+	"github.com/cometbft/cometbft/abci/types"
 
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
