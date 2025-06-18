@@ -8,6 +8,7 @@ pkgs.mkShell {
     pkgs.cosmovisor
     pkgs.nodejs
     pkgs.test-env
+    pkgs.go_1_24
   ];
   shellHook = ''
     . ${../../scripts/.env}
