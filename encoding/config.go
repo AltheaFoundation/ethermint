@@ -16,7 +16,7 @@
 package encoding
 
 import (
-	amino "github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	mtestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
@@ -27,20 +27,21 @@ import (
 
 // MakeConfig creates an EncodingConfig for testing
 func MakeConfig(mb module.BasicManager) mtestutil.TestEncodingConfig {
-	cdc := amino.NewLegacyAmino()
+	amino := codec.NewLegacyAmino()
 	interfaceRegistry := types.NewInterfaceRegistry()
-	codec := amino.NewProtoCodec(interfaceRegistry)
+	marshaler := codec.NewProtoCodec(interfaceRegistry)
+	txCfg := tx.NewTxConfig(marshaler, tx.DefaultSignModes)
 
 	encodingConfig := mtestutil.TestEncodingConfig{
 		InterfaceRegistry: interfaceRegistry,
-		Codec:             codec,
-		TxConfig:          tx.NewTxConfig(codec, tx.DefaultSignModes),
-		Amino:             cdc,
+		Codec:             marshaler,
+		TxConfig:          txCfg,
+		Amino:             amino,
 	}
 
 	enccodec.RegisterLegacyAminoCodec(encodingConfig.Amino)
-	mb.RegisterLegacyAminoCodec(encodingConfig.Amino)
 	enccodec.RegisterInterfaces(encodingConfig.InterfaceRegistry)
+	mb.RegisterLegacyAminoCodec(encodingConfig.Amino)
 	mb.RegisterInterfaces(encodingConfig.InterfaceRegistry)
 	return encodingConfig
 }

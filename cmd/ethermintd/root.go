@@ -65,7 +65,7 @@ const EnvPrefix = "ETHERMINT"
 
 // NewRootCmd creates a new root command for simd. It is called once in the
 // main function.
-func NewRootCmd() (*cobra.Command, mtestutil.TestEncodingConfig) {
+func NewRootCmd() *cobra.Command {
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
 	initClientCtx := client.Context{}.
 		WithCodec(encodingConfig.Codec).
@@ -77,7 +77,8 @@ func NewRootCmd() (*cobra.Command, mtestutil.TestEncodingConfig) {
 		WithBroadcastMode(flags.BroadcastSync).
 		WithHomeDir(app.DefaultNodeHome).
 		WithKeyringOptions(hd.EthSecp256k1Option()).
-		WithViper(EnvPrefix)
+		WithViper(EnvPrefix).
+		WithChainID("ethermint_9000-1")
 
 	eip712.SetEncodingConfig(encodingConfig)
 
@@ -150,7 +151,7 @@ func NewRootCmd() (*cobra.Command, mtestutil.TestEncodingConfig) {
 	// add rosetta
 	rootCmd.AddCommand(rosettacmd.RosettaCommand(encodingConfig.InterfaceRegistry, encodingConfig.Codec))
 
-	return rootCmd, encodingConfig
+	return rootCmd
 }
 
 func addModuleInitFlags(startCmd *cobra.Command) {
@@ -266,6 +267,7 @@ func (a appCreator) newApp(logger tmlog.Logger, db dbm.DB, traceStore io.Writer,
 		baseapp.SetSnapshot(snapshotStore, snapshotOptions),
 		baseapp.SetIAVLCacheSize(cast.ToInt(appOpts.Get(sdkserver.FlagIAVLCacheSize))),
 		baseapp.SetIAVLDisableFastNode(cast.ToBool(appOpts.Get(sdkserver.FlagDisableIAVLFastNode))),
+		baseapp.SetChainID("ethermint_9000-1"),
 	)
 
 	return ethermintApp
