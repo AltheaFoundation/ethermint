@@ -10,4 +10,6 @@ cd ../tests/integration_tests/hardhat
 HUSKY_SKIP_INSTALL=1 npm install
 npm run typechain
 cd ..
+echo "Pytest start"
 pytest -vv -s
+echo "Pytest end"
