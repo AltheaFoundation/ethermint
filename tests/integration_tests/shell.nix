@@ -9,6 +9,9 @@ pkgs.mkShell {
     pkgs.nodejs
     pkgs.test-env
     pkgs.go_1_24
+    pkgs.poetry2nix
+    pkgs.lib
+    pkgs.python310
   ];
   shellHook = ''
     . ${../../scripts/.env}

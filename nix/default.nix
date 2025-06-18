@@ -11,7 +11,6 @@ import sources.nixpkgs {
       };
     }) # update to a version that supports eip-1559
     # https://github.com/NixOS/nixpkgs/pull/179622
-    (import ./go_overlay.nix)
     (final: prev:
       (import "${sources.gomod2nix}/overlay.nix")
         (final // {
@@ -27,7 +26,11 @@ import sources.nixpkgs {
           dotenv = builtins.path { name = "dotenv"; path = ../scripts/.env; };
         };
       })
-    (_: pkgs: { test-env = pkgs.callPackage ./testenv.nix { }; })
+    (_: pkgs: { test-env = pkgs.callPackage ./testenv.nix {
+      poetry2nix = pkgs.poetry2nix;
+      lib = pkgs.lib;
+      python310 = pkgs.python310;
+    }; })
     (_: pkgs: {
       cosmovisor = pkgs.buildGo118Module rec {
         name = "cosmovisor";
