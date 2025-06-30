@@ -149,7 +149,9 @@ is performed. Note, when enabled, gRPC will also be automatically enabled.
 
 			withCMT, _ := cmd.Flags().GetBool(srvflags.WithComet)
 			if !withCMT {
-				serverCtx.Logger.Info("starting ABCI without Tendermint")
+				serverCtx.Logger.Info("starting ABCI without CometBFT")
+			} else {
+				serverCtx.Logger.Info("starting ABCI with CometBFT")
 			}
 
 			serverCtx.Logger.Info("Unlocking keyring")
@@ -162,8 +164,6 @@ is performed. Note, when enabled, gRPC will also be automatically enabled.
 					return err
 				}
 			}
-
-			serverCtx.Logger.Info("starting ABCI with Tendermint")
 
 			// amino is needed here for backwards compatibility of REST routes
 			return wrapCPUProfile(serverCtx, func() error {
@@ -188,10 +188,10 @@ is performed. Note, when enabled, gRPC will also be automatically enabled.
 	cmd.Flags().Uint64(server.FlagPruningKeepRecent, 0, "Number of recent heights to keep on disk (ignored if pruning is not 'custom')")
 	cmd.Flags().Uint64(server.FlagPruningInterval, 0, "Height interval at which pruned heights are removed from disk (ignored if pruning is not 'custom')") //nolint:lll
 	cmd.Flags().Uint(server.FlagInvCheckPeriod, 0, "Assert registered invariants every N blocks")
-	cmd.Flags().Uint64(server.FlagMinRetainBlocks, 0, "Minimum block height offset during ABCI commit to prune Tendermint blocks")
+	cmd.Flags().Uint64(server.FlagMinRetainBlocks, 0, "Minimum block height offset during ABCI commit to prune CometBFT blocks")
 	cmd.Flags().String(srvflags.AppDBBackend, "", "The type of database for application and snapshots databases")
 
-	cmd.Flags().Bool(srvflags.GRPCOnly, false, "Start the node in gRPC query only mode without Tendermint process")
+	cmd.Flags().Bool(srvflags.GRPCOnly, false, "Start the node in gRPC query only mode without CometBFT process")
 	cmd.Flags().Bool(srvflags.GRPCEnable, true, "Define if the gRPC server should be enabled")
 	cmd.Flags().String(srvflags.GRPCAddress, serverconfig.DefaultGRPCAddress, "the gRPC server address to listen on")
 	cmd.Flags().Bool(srvflags.GRPCWebEnable, true, "Define if the gRPC-Web server should be enabled. (Note: gRPC must also be enabled.)")
@@ -234,7 +234,7 @@ is performed. Note, when enabled, gRPC will also be automatically enabled.
 		return pflag.NormalizedName(name)
 	})
 
-	// add support for all Tendermint-specific command line options
+	// add support for all CometBFT-specific command line options
 	cmtcmd.AddNodeFlags(cmd)
 
 	if opts.AddFlags != nil {
@@ -285,7 +285,7 @@ func startStandAlone(
 		return fmt.Errorf("error creating listener: %v", err)
 	}
 
-	svr.SetLogger(servercmtlog.CometLoggerWrapper{Logger: svrCtx.Logger.With("server", "abci")})
+	svr.SetLogger(servercmtlog.CometLoggerWrapper{Logger: svrCtx.Logger.With("module", "abci-server")})
 
 	g, ctx := getCtx(svrCtx, false)
 
@@ -352,11 +352,11 @@ func startInProcess(
 	g, ctx := getCtx(svrCtx, true)
 
 	if gRPCOnly {
-		svrCtx.Logger.Info("starting node in query only mode; Tendermint is disabled")
+		svrCtx.Logger.Info("starting node in query only mode; CometBFT is disabled")
 		svrCfg.GRPC.Enable = true
 		svrCfg.JSONRPC.EnableIndexer = false
 	} else {
-		svrCtx.Logger.Info("starting node with ABCI Tendermint in-process")
+		svrCtx.Logger.Info("starting node with ABCI CometBFT in-process")
 		tmNode, cleanupFn, err := startCmtNode(ctx, cmtCfg, app, svrCtx)
 		if err != nil {
 			return err
