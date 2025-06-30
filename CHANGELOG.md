@@ -35,7 +35,38 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 # Changelog
 
-## [v0.22.0] - 2023-04-12
+## [v0.23.0-multi-chainids] - 2025-05-30
+
+### Gravity + Althea Features
+
+- (eip712) Enable multiple EVM Chain IDs for EIP712 transactions
+
+## [v0.23.0] - 2025-05-30
+
+### Gravity + Althea Features
+
+- (x/evm) Burn EVM Transaction Fees
+- (x/evm) Enable multiple key algorithms (cosmos secp256k1, eth_secp256k1) by creating the correct account type for EVM accounts
+- (eip712) Relax Chain ID format requirements by accepting an optional EVM Chain ID in the ante handler
+- (ante) Reenable SDK Vesting messages
+
+### B-Harvest Changes
+
+B-Harvest aided the Canto team in upgrading Canto to cosmos-sdk version 0.50.8 by updating the ethermint repo to the same version.
+To do this, they took the main branch (originally up to date with the branch release/v0.22.x) and added the necessary changes.
+This is a list of the notable changes:
+
+- Update SDK to v0.50.8, IBC to v8.3.2
+- Update Go to 1.21, update dockerfile and nix tests to use go 1.21 as well
+- server/start.go updated to be in line with cosmos-sdk/server/start.go
+- pulsar proto config added
+- tx priority does not exist in cometbft anymore, so tx priority tests have been disabled
+- tests updated to work with new dependencies
+- amino encoding equivalence test added
+- SDK vesting messages blocked
+
+All of these B-Harvest changes have been incorporated into the AltheaFoundation fork of ethermint. Notably the Canto-specific changes
+have not been incorporated, such as the chain id query fix which only applies to Canto.
 
 ### State Machine Breaking
 
