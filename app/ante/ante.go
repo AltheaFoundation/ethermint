@@ -28,7 +28,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
 
 	"github.com/evmos/ethermint/crypto/ethsecp256k1"
 )
@@ -52,19 +51,6 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 		var anteHandler sdk.AnteHandler
 
 		defer Recover(ctx.Logger(), &err)
-
-		// disable vesting message types
-		for _, msg := range tx.GetMsgs() {
-			switch msg.(type) {
-			case *vestingtypes.MsgCreateVestingAccount,
-				*vestingtypes.MsgCreatePeriodicVestingAccount,
-				*vestingtypes.MsgCreatePermanentLockedAccount:
-				return ctx, errorsmod.Wrapf(
-					errortypes.ErrInvalidRequest,
-					"vesting messages are not supported",
-				)
-			}
-		}
 
 		txWithExtensions, ok := tx.(authante.HasExtensionOptionsTx)
 		if ok {
