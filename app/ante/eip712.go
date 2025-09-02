@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
+	simappparams "cosmossdk.io/simapp/params"
 	txsigning "cosmossdk.io/x/tx/signing"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -68,7 +69,7 @@ func NewLegacyCosmosAnteHandlerEip712(options HandlerOptions) sdk.AnteHandler {
 		authante.NewValidateSigCountDecorator(options.AccountKeeper),
 		authante.NewSigGasConsumeDecorator(options.AccountKeeper, options.SigGasConsumer),
 		// Note: signature verification uses EIP instead of the cosmos signature validator
-		NewLegacyEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler, options.EvmChainIDs),
+		NewLegacyEip712SigVerificationDecorator(options.AccountKeeper, options.SignModeHandler, options.EvmChainIDs, options.EncodingConfig),
 		authante.NewIncrementSequenceDecorator(options.AccountKeeper),
 		ibcante.NewRedundantRelayDecorator(options.IBCKeeper),
 		NewGasWantedDecorator(options.EvmKeeper, options.FeeMarketKeeper),
@@ -85,6 +86,7 @@ type LegacyEip712SigVerificationDecorator struct {
 	ak              evmtypes.AccountKeeper
 	signModeHandler *txsigning.HandlerMap
 	evmChainIds     []string
+	aminoCodec      *codec.LegacyAmino
 }
 
 // Deprecated: NewLegacyEip712SigVerificationDecorator creates a new LegacyEip712SigVerificationDecorator
@@ -94,11 +96,13 @@ func NewLegacyEip712SigVerificationDecorator(
 	ak evmtypes.AccountKeeper,
 	signModeHandler *txsigning.HandlerMap,
 	evmChainIds []string,
+	encodingConfig simappparams.EncodingConfig,
 ) LegacyEip712SigVerificationDecorator {
 	return LegacyEip712SigVerificationDecorator{
 		ak:              ak,
 		signModeHandler: signModeHandler,
 		evmChainIds:     evmChainIds,
+		aminoCodec:      encodingConfig.Amino,
 	}
 }
 
@@ -206,7 +210,7 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 
 	// Attempt to verify the signature against all EVM Chain IDs
 	for _, evmChainID := range evmChainIds {
-		if err = VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx, evmChainID); err != nil {
+		if err = VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx, evmChainID, svd.aminoCodec); err != nil {
 			continue
 		} else {
 			break
@@ -233,7 +237,11 @@ func VerifySignature(
 	_ *txsigning.HandlerMap,
 	tx authsigning.Tx,
 	evmChainID string,
+	aminoCodec *codec.LegacyAmino,
 ) error {
+	if aminoCodec == nil {
+		panic("amino codec not set for EIP712 signature verification")
+	}
 	switch data := sigData.(type) {
 	case *signing.SingleSignatureData:
 		if data.SignMode != signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON {
@@ -253,7 +261,8 @@ func VerifySignature(
 			return errorsmod.Wrap(errortypes.ErrNoSignatures, "tx doesn't contain any msgs to verify signature")
 		}
 
-		txBytes := legacytx.StdSignBytes(
+		txBytes := eip712.LegacyStdSignBytes(
+			aminoCodec,
 			signerData.ChainID,
 			signerData.AccountNumber,
 			signerData.Sequence,

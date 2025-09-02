@@ -17,6 +17,7 @@ package ante
 
 import (
 	errorsmod "cosmossdk.io/errors"
+	simappparams "cosmossdk.io/simapp/params"
 	storetypes "cosmossdk.io/store/types"
 	txsigning "cosmossdk.io/x/tx/signing"
 
@@ -50,6 +51,7 @@ type HandlerOptions struct {
 	TxFeeChecker           ante.TxFeeChecker
 	DisabledAuthzMsgs      []string
 	EvmChainIDs            []string
+	EncodingConfig         simappparams.EncodingConfig
 }
 
 func (options HandlerOptions) validate() error {
