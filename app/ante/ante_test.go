@@ -1,6 +1,7 @@
 package ante_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -19,9 +20,11 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/types/multisig"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
+	"github.com/cosmos/cosmos-sdk/x/authz"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	"github.com/cosmos/cosmos-sdk/x/authz"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -33,8 +36,6 @@ import (
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
 
 	amino "github.com/cosmos/cosmos-sdk/codec"
-	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 )
 
 func TestAnteTestSuite(t *testing.T) {
@@ -57,10 +58,81 @@ func TestAnteTestSuite(t *testing.T) {
 	})
 }
 
+// func (suite AnteTestSuite) TestEncodingIssue() {
+// 	var acc sdk.AccountI
+// 	addr, privKey := tests.NewAddrKey()
+// 	to := tests.GenerateAddress()
+// 	to = to
+
+// 	setup := func() {
+// 		suite.enableFeemarket = false
+// 		suite.SetupTest() // reset
+
+// 		acc = suite.app.AccountKeeper.NewAccountWithAddress(suite.ctx, addr.Bytes())
+// 		suite.Require().NoError(acc.SetSequence(1))
+// 		suite.app.AccountKeeper.SetAccount(suite.ctx, acc)
+
+// 		suite.app.EvmKeeper.SetBalance(suite.ctx, addr, big.NewInt(10000000000))
+
+// 		suite.app.FeeMarketKeeper.SetBaseFee(suite.ctx, big.NewInt(100))
+// 	}
+
+// 	testCases := []struct {
+// 		name      string
+// 		txFn      func() sdk.Tx
+// 		checkTx   bool
+// 		reCheckTx bool
+// 		expPass   bool
+// 	}{
+
+// 		{
+// 			"success - DeliverTx EIP712 signed Cosmos Tx with MsgSend",
+// 			func() sdk.Tx {
+// 				from := acc.GetAddress()
+// 				gas := uint64(200000)
+// 				amount := sdk.NewCoins(sdk.NewCoin(evmtypes.DefaultEVMDenom, sdkmath.NewInt(100*int64(gas))))
+// 				txBuilder := suite.CreateTestEIP712TxBuilderMsgSend(from, privKey, "ethermint_9000-1", gas, amount)
+// 				return txBuilder.GetTx()
+// 			}, false, false, true,
+// 		},
+// 	}
+
+// 	for _, tc := range testCases {
+// 		suite.Run(tc.name, func() {
+// 			setup()
+
+// 			tx := tc.txFn()
+// 			msgs := tx.GetMsgs()
+// 			cdc := suite.app.EncodingConfig.Amino
+// 			msgsBytes := make([]json.RawMessage, 0, len(msgs))
+// 			for _, msg := range msgs {
+// 				bz := cdc.MustMarshalJSON(msg)
+// 				msgsBytes = append(msgsBytes, mustSortJSON(bz))
+// 			}
+
+// 			fmt.Printf("Amino Msgs: %s\n", msgsBytes)
+// 		})
+// 	}
+// }
+
+func mustSortJSON(bz []byte) []byte {
+	var c any
+	err := json.Unmarshal(bz, &c)
+	if err != nil {
+		panic(err)
+	}
+	js, err := json.Marshal(c)
+	if err != nil {
+		panic(err)
+	}
+	return js
+}
+
 func (suite AnteTestSuite) TestAnteHandler() {
 	var acc sdk.AccountI
 	addr, privKey := tests.NewAddrKey()
 	to := tests.GenerateAddress()
+	to = to
 
 	setup := func() {
 		suite.enableFeemarket = false

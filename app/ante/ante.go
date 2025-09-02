@@ -41,6 +41,9 @@ const (
 // transaction-level processing (e.g. fee payment, signature verification) before
 // being passed onto it's respective handler.
 func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
+	if options.EncodingConfig.Amino == nil {
+		panic("amino codec not set in encoding config for ante handler")
+	}
 	if err := options.validate(); err != nil {
 		return nil, err
 	}

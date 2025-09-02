@@ -782,7 +782,7 @@ func NewEthermintApp(
 	app.SetBeginBlocker(app.BeginBlocker)
 	app.SetPreBlocker(app.PreBlocker)
 	app.SetEndBlocker(app.EndBlocker)
-	app.setAnteHandler(txConfig, cast.ToUint64(appOpts.Get(srvflags.EVMMaxTxGasWanted)))
+	app.setAnteHandler(encodingConfig, cast.ToUint64(appOpts.Get(srvflags.EVMMaxTxGasWanted)))
 
 	// In v0.46, the SDK introduces _postHandlers_. PostHandlers are like
 	// antehandlers, but are run _after_ the `runMsgs` execution. They are also
@@ -825,12 +825,12 @@ func NewEthermintApp(
 }
 
 // use Ethermint's custom AnteHandler
-func (app *EthermintApp) setAnteHandler(txConfig client.TxConfig, maxGasWanted uint64) {
+func (app *EthermintApp) setAnteHandler(encodingConfig simappparams.EncodingConfig, maxGasWanted uint64) {
 	anteHandler, err := ante.NewAnteHandler(
 		ante.HandlerOptions{
 			AccountKeeper:          app.AccountKeeper,
 			BankKeeper:             app.BankKeeper,
-			SignModeHandler:        txConfig.SignModeHandler(),
+			SignModeHandler:        encodingConfig.TxConfig.SignModeHandler(),
 			FeegrantKeeper:         app.FeeGrantKeeper,
 			SigGasConsumer:         ante.DefaultSigVerificationGasConsumer,
 			IBCKeeper:              app.IBCKeeper,
@@ -845,7 +845,8 @@ func (app *EthermintApp) setAnteHandler(txConfig client.TxConfig, maxGasWanted u
 				sdk.MsgTypeURL(&vestingtypes.MsgCreatePermanentLockedAccount{}),
 				sdk.MsgTypeURL(&vestingtypes.MsgCreatePeriodicVestingAccount{}),
 			},
-			EvmChainID: "9000",
+			EvmChainID:     "9000",
+			EncodingConfig: encodingConfig,
 		},
 	)
 	if err != nil {

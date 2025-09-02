@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/x/auth/migrations/legacytx"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -197,7 +198,8 @@ func legacyDecodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error
 	}
 
 	// WrapTxToTypedData expects the payload as an Amino Sign Doc
-	signBytes := legacytx.StdSignBytes(
+	signBytes := LegacyStdSignBytes(
+		aminoCodec,
 		signDoc.ChainId,
 		signDoc.AccountNumber,
 		signerInfo.Sequence,
@@ -281,4 +283,43 @@ func getMsgType(msg sdk.Msg) (string, error) {
 	}
 
 	return jsonMsg.Type, nil
+}
+
+// LegacyStdSignBytes returns the bytes to sign for a transaction.
+// Note that this function was deprecated, but in order to preserve eip712 signing we need to reproduce it here and remove the panic condition
+func LegacyStdSignBytes(cdc *codec.LegacyAmino, chainID string, accnum, sequence, timeout uint64, fee legacytx.StdFee, msgs []sdk.Msg, memo string) []byte {
+	amino := codec.NewLegacyAmino()
+	msgsBytes := make([]json.RawMessage, 0, len(msgs))
+	for _, msg := range msgs {
+		bz := cdc.MustMarshalJSON(msg)
+		msgsBytes = append(msgsBytes, mustSortJSON(bz))
+	}
+
+	bz, err := amino.MarshalJSON(legacytx.StdSignDoc{
+		AccountNumber: accnum,
+		ChainID:       chainID,
+		Fee:           json.RawMessage(fee.Bytes()),
+		Memo:          memo,
+		Msgs:          msgsBytes,
+		Sequence:      sequence,
+		TimeoutHeight: timeout,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	return mustSortJSON(bz)
+}
+
+func mustSortJSON(bz []byte) []byte {
+	var c any
+	err := json.Unmarshal(bz, &c)
+	if err != nil {
+		panic(err)
+	}
+	js, err := json.Marshal(c)
+	if err != nil {
+		panic(err)
+	}
+	return js
 }

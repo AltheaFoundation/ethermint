@@ -192,7 +192,8 @@ func decodeProtobufSignDoc(signDocBytes []byte) (apitypes.TypedData, error) {
 	}
 
 	// WrapTxToTypedData expects the payload as an Amino Sign Doc
-	signBytes := legacytx.StdSignBytes(
+	signBytes := LegacyStdSignBytes(
+		aminoCodec,
 		signDoc.ChainId,
 		signDoc.AccountNumber,
 		signerInfo.Sequence,
