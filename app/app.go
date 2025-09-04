@@ -151,6 +151,7 @@ import (
 )
 
 const appName = "ethermintd"
+const SIGVERIFY_CHANGEOVER_HEIGHT = 8675309 // Specify the actual changeover height here
 
 var (
 	// DefaultNodeHome default home directories for the application daemon
@@ -782,7 +783,7 @@ func NewEthermintApp(
 	app.SetBeginBlocker(app.BeginBlocker)
 	app.SetPreBlocker(app.PreBlocker)
 	app.SetEndBlocker(app.EndBlocker)
-	app.setAnteHandler(encodingConfig, cast.ToUint64(appOpts.Get(srvflags.EVMMaxTxGasWanted)))
+	app.setAnteHandler(encodingConfig, cast.ToUint64(appOpts.Get(srvflags.EVMMaxTxGasWanted)), SIGVERIFY_CHANGEOVER_HEIGHT)
 
 	// In v0.46, the SDK introduces _postHandlers_. PostHandlers are like
 	// antehandlers, but are run _after_ the `runMsgs` execution. They are also
@@ -825,7 +826,7 @@ func NewEthermintApp(
 }
 
 // use Ethermint's custom AnteHandler
-func (app *EthermintApp) setAnteHandler(encodingConfig simappparams.EncodingConfig, maxGasWanted uint64) {
+func (app *EthermintApp) setAnteHandler(encodingConfig simappparams.EncodingConfig, maxGasWanted uint64, sigverifyChangeoverHeight uint64) {
 	anteHandler, err := ante.NewAnteHandler(
 		ante.HandlerOptions{
 			AccountKeeper:          app.AccountKeeper,
@@ -848,6 +849,7 @@ func (app *EthermintApp) setAnteHandler(encodingConfig simappparams.EncodingConf
 			EvmChainIDs:    []string{"9000"},
 			EncodingConfig: encodingConfig,
 		},
+		sigverifyChangeoverHeight,
 	)
 	if err != nil {
 		panic(err)
