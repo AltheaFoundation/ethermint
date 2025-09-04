@@ -209,12 +209,26 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 	}
 
 	// Attempt to verify the signature against all EVM Chain IDs
+	var verifyErrors []error
+	var success bool
 	for _, evmChainID := range evmChainIds {
-		if err = VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx, evmChainID, svd.aminoCodec); err != nil {
+		if err := VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx, evmChainID, svd.aminoCodec); err != nil {
+			verifyErrors = append(verifyErrors, fmt.Errorf("evmChainID %s: %w", evmChainID, err))
+			fmt.Printf("\n\nFailed to verify EIP712 signature with evmChainID %s error: %v\n\n", evmChainID, err)
 			continue
 		} else {
+			success = true
 			break
 		}
+	}
+	// Note that we do not need to check the length of evmChainIDs here, it's already been done
+	if !success && len(verifyErrors) > 0 {
+		combinedErr := errorsmod.Wrapf(
+			errortypes.ErrUnauthorized,
+			"signature verification failed for all evmChainIDs; errors: %v",
+			verifyErrors,
+		)
+		return ctx, combinedErr
 	}
 
 	// If none succeeded, return an error
