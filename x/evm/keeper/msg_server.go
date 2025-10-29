@@ -19,7 +19,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
+
+	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 
@@ -30,6 +34,7 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	errortypes "github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/evmos/ethermint/x/evm/types"
 )
@@ -46,6 +51,32 @@ func (k *Keeper) EthereumTx(goCtx context.Context, msg *types.MsgEthereumTx) (*t
 	sender := msg.From
 	tx := msg.AsTransaction()
 	txIndex := k.GetTxIndexTransient(ctx)
+
+	// Verify the signature matches msg.From by recovering the signer
+	evmParams := k.GetParams(ctx)
+	chainCfg := evmParams.GetChainConfig()
+	ethCfg := chainCfg.EthereumConfig(k.ChainID())
+	blockNum := big.NewInt(ctx.BlockHeight())
+	signer := ethtypes.MakeSigner(ethCfg, blockNum)
+
+	recoveredSender, err := signer.Sender(tx)
+	if err != nil {
+		return nil, errorsmod.Wrapf(
+			errortypes.ErrorInvalidSigner,
+			"failed to recover sender from signature: %s",
+			err.Error(),
+		)
+	}
+
+	expectedSender := common.HexToAddress(sender)
+	if recoveredSender != expectedSender {
+		return nil, errorsmod.Wrapf(
+			errortypes.ErrUnauthorized,
+			"signature does not match sender: recovered %s, expected %s",
+			recoveredSender.Hex(),
+			expectedSender.Hex(),
+		)
+	}
 
 	labels := []metrics.Label{
 		telemetry.NewLabel("tx_type", fmt.Sprintf("%d", tx.Type())),
