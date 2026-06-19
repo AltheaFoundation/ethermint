@@ -1,6 +1,6 @@
 module github.com/evmos/ethermint
 
-go 1.19
+go 1.21.0
 
 require (
 	github.com/cosmos/cosmos-sdk v0.45.16
@@ -37,7 +37,7 @@ require (
 	github.com/rakyll/statik v0.1.7
 	github.com/regen-network/cosmos-proto v0.3.1
 	github.com/rs/cors v1.8.2
-	github.com/spf13/cast v1.5.0
+	github.com/spf13/cast v1.10.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
 	github.com/status-im/keycard-go v0.0.0-20200402102358-957c09536969
