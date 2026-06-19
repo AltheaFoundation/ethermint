@@ -1,6 +1,6 @@
 module github.com/evmos/ethermint
 
-go 1.19
+go 1.23
 
 require (
 	github.com/cosmos/cosmos-sdk v0.45.16
@@ -49,7 +49,7 @@ require (
 	golang.org/x/text v0.7.0
 	google.golang.org/genproto v0.0.0-20230125152338-dcaf20b6aeaa
 	google.golang.org/grpc v1.52.3
-	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 )
 
